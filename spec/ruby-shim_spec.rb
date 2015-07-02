@@ -5,8 +5,10 @@ describe 'ruby-shim' do
 
   def prepend_ruby_shim_to_path_as_ruby_in_tmpdir
     tmpdir = Dir.mktmpdir('ruby-shim-rspec')
-    File.symlink(File.expand_path('../../lib/ruby-shim.rb', __FILE__),
-                 File.expand_path('ruby', tmpdir))
+    %w[ruby irb gem].each do |f|
+      File.symlink(File.expand_path('../../lib/ruby-shim.rb', __FILE__),
+                   File.expand_path(f, tmpdir))
+    end
     ENV['PATH'] = "#{tmpdir}:#{ENV['PATH']}"
     tmpdir
   end
@@ -23,8 +25,8 @@ describe 'ruby-shim' do
 
     context "--ruby-version=#{version}" do
       it "runs ruby version #{version}" do
-        expect(`ruby --ruby-version=#{version} -e 'puts RUBY_VERSION'`
-              ).to start_with(version)
+        expect(`ruby --ruby-version=#{version} -e 'puts RUBY_VERSION'`).to(
+            start_with(version))
       end
     end
 
@@ -34,6 +36,16 @@ describe 'ruby-shim' do
           Dir.chdir(tmpdir) do
             IO.write('.ruby-version', version)
             expect(`ruby -e 'puts RUBY_VERSION'`).to start_with(version)
+          end
+        end
+      end
+
+      it "runs irb under ruby version #{version}" do
+        Dir.mktmpdir('ruby-shim-spec') do |tmpdir|
+          Dir.chdir(tmpdir) do
+            IO.write('.ruby-version', version)
+            expect(`echo 'irb_jobs && puts(RUBY_VERSION)' | irb -f`).to(
+                match(/^#{version}/))
           end
         end
       end

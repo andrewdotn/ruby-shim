@@ -2,7 +2,6 @@
 
 require 'pathname'
 
-Gem
 class RubyShim
 
   RUBY_SHIM_PATH = Pathname.new(__FILE__).realpath
@@ -45,6 +44,12 @@ class RubyShim
     if ruby.nil?
       STDERR.puts "No ruby version #{desired_version} available"
       exit 75 # EPROGMISMATCH
+    end
+
+    # irb and gem are special-cased because they are the only commands
+    # installed with ruby that can’t also be installed as gems.
+    if %w[irb gem].include? File.basename($0)
+      args.insert(0, "/usr/bin/#{File.basename $0}")
     end
 
     exec *([ruby] + args)
