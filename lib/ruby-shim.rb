@@ -69,9 +69,10 @@ class RubyShim
   # directories, or nil if there is none.
   def version_from_dir(path)
     return nil if path.nil?
-    unless Pathname=== path
+    unless Pathname === path
       path = Pathname.new(path)
     end
+    path = path.expand_path unless path.absolute?
     ruby_version = path.join('.ruby-version')
     if ruby_version.exist?
       return ruby_version.read.strip
