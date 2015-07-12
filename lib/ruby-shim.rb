@@ -54,9 +54,9 @@ class RubyShim
       exit 75 # EPROGMISMATCH
     end
 
-    # irb and gem are special-cased because they are the only commands
-    # installed with ruby that can’t also be installed as gems.
-    if %w[irb gem].include? File.basename($0)
+    # These dev tools are special-cased to use the Ruby version inferred
+    # from the current directory, instead of from the script directory.
+    if %w[gem irb ri].include? File.basename($0)
       args.insert(0, "/usr/bin/#{File.basename $0}")
     end
 

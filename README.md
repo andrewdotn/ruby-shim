@@ -14,8 +14,8 @@ handle.
 
 ## Installation
 
- 1. Create symlinks to `lib/ruby-shim.rb` named `ruby`, `gem`, and `irb`
-    somewhere early in your `$PATH`.
+ 1. Create symlinks to `lib/ruby-shim.rb` named `ruby`, `gem`, `irb`, and
+    `ri` somewhere early in your `$PATH`.
  2. Add other Rubies you’d like to run later in `$PATH`.
  3. Add `.ruby-version` files to `~/.gem/ruby/*/bin`.
  4. Add `install: --user-install --env-shebang` to `~/.gemrc`, to prevent
