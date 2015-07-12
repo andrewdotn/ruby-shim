@@ -1,11 +1,12 @@
 require 'fileutils'
+require 'timeout'
 require 'tmpdir'
 
 describe 'ruby-shim' do
 
   def prepend_ruby_shim_to_path_as_ruby_in_tmpdir
     tmpdir = Dir.mktmpdir('ruby-shim-rspec')
-    %w[ruby irb gem].each do |f|
+    %w[bundle ri ruby irb gem].each do |f|
       File.symlink(File.expand_path('../../lib/ruby-shim.rb', __FILE__),
                    File.expand_path(f, tmpdir))
     end
@@ -22,7 +23,6 @@ describe 'ruby-shim' do
   end
 
   %w[2.0 2.2].each do |version|
-
     context "--ruby-version=#{version}" do
       it "runs ruby version #{version}" do
         expect(`ruby --ruby-version=#{version} -e 'puts RUBY_VERSION'`).to(
@@ -61,9 +61,45 @@ puts RUBY_VERSION")
           test_script.chmod(0700)
           expect(`#{test_script}`).to start_with(version)
         end
-        end
+      end
     end
 
-  end
+    %w[2.0 2.2].each do |version|
+      context "--ruby-version=#{version}" do
+        it "works with rails" do
+          Dir.mktmpdir('ruby-shim-spec') do |tmpdir|
+            Dir.chdir(tmpdir) do
+              File.open('.ruby-version', 'w') do |w|
+                w.write(version)
+              end
+              File.open('Gemfile', 'w') do |w|
+                w.puts("gem 'railties', '~> 4.2.3'")
+              end
 
+              to_put_back = {}
+              ENV.keys.grep /^BUNDLE/ do |k|
+                to_put_back[k] = ENV.delete k unless k == 'BUNDLE_JOBS'
+              end
+              begin
+                system("bundle install --local")
+                system("bundle exec rails new testapp")
+                Dir.chdir('testapp') do
+                  begin
+                    Timeout.timeout(10) do
+                      expect(`bin/rails generate --help`)
+                          .to include('integration_test')
+                    end
+                    ensure
+                    system("bin/spring stop")
+                  end
+                end
+              ensure
+                to_put_back.each { |k, v| ENV[k] = v }
+              end
+            end
+          end
+        end
+      end
+    end
+  end
 end

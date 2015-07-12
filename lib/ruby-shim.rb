@@ -56,15 +56,23 @@ class RubyShim
 
     # These dev tools are special-cased to use the Ruby version inferred
     # from the current directory, instead of from the script directory.
-    if %w[gem irb ri].include? File.basename($0)
-      args.insert(0, "/usr/bin/#{File.basename $0}")
+    dev_script = File.basename($0)
+    if %w[bundle gem irb ri].include? dev_script
+      if File.exist? "/usr/bin/#{dev_script}"
+        dev_script = "/usr/bin/#{dev_script}"
+      else
+        dev_script = ENV['PATH'].split(':')
+                           .reverse
+                           .map { |p| Pathname.new(p).join(dev_script) }
+                           .find(&:executable?)
+                           .to_s
+      end
+      args.insert(0, dev_script)
     end
 
     ENV.delete("RUBY_SHIM_PROBING")
 
-    unless ENV.has_key?("GEM_HOME")
-      ENV["GEM_HOME"] = ruby[:GEM_HOME]
-    end
+    ENV["GEM_HOME"] = ruby[:GEM_HOME]
     exec *([ruby[:ruby]] + args), close_others: false
     exit 8 # ENOEXEC
   end
