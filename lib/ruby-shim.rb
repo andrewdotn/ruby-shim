@@ -9,6 +9,14 @@ class RubyShim
   # Find and execuate appropriate version of ruby.
   def main(args=ARGV)
 
+    # If there are two ruby-shims on PATH, they will try to probe each other
+    # recursively, resulting in livelock.
+    if ENV.has_key?("RUBY_SHIM_PROBING")
+      puts "ruby-shim\nn/a\n"
+      exit 11 # EDEADLK
+    end
+    ENV["RUBY_SHIM_PROBING"] = "true"
+
     from_args = nil
     from_script = nil
     from_pwd = nil
@@ -28,14 +36,14 @@ class RubyShim
                                   from_script ||
                                   from_pwd
     ruby = finder.for_version(desired_version)
-    ruby ||= finder.available_versions[0][:ruby]
+    ruby ||= finder.available_versions[0]
 
     if from_args == 'help'
       puts 'ruby-shim usage: ruby [--ruby-version=VERSION|help] [ruby args]'
       puts
       puts 'Available versions from $PATH:'
       finder.available_versions.each do |v|
-        selected = ruby == v[:ruby] ? '*' : ' '
+        selected = ruby[:ruby] == v[:ruby] ? '*' : ' '
         puts "#{selected} #{v[:RUBY_VERSION]} #{v[:ruby]}"
       end
       exit 0
@@ -52,7 +60,12 @@ class RubyShim
       args.insert(0, "/usr/bin/#{File.basename $0}")
     end
 
-    exec *([ruby] + args)
+    ENV.delete("RUBY_SHIM_PROBING")
+
+    unless ENV.has_key?("GEM_HOME")
+      ENV["GEM_HOME"] = ruby[:GEM_HOME]
+    end
+    exec *([ruby[:ruby]] + args)
     exit 8 # ENOEXEC
   end
 
@@ -99,18 +112,22 @@ class RubyShim
     def for_version(version)
       return nil if version.nil?
       available_versions.each do |r|
+        next if r.nil?
         if r[:RUBY_VERSION].start_with? version
-          return r[:ruby]
+          return r
         end
       end
       return nil
     end
 
     def version_info(ruby)
-      output = IO.popen([ruby, '-e', 'puts RUBY_VERSION'],
+      output = IO.popen([ruby, '-e', 'puts RUBY_VERSION; puts Gem.user_dir'],
           in: '/dev/null', err: [:child, :out]) { |pipe| pipe.read }
-      return {} unless $?.success?
-      return {ruby: ruby, RUBY_VERSION: output.strip}
+      return nil unless $?.success?
+      output_pieces = output.split("\n").map(&:strip)
+      return {ruby: ruby,
+              RUBY_VERSION: output_pieces[0],
+              GEM_HOME: output_pieces[1]}
     end
 
   end
