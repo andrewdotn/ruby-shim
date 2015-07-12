@@ -65,7 +65,7 @@ class RubyShim
     unless ENV.has_key?("GEM_HOME")
       ENV["GEM_HOME"] = ruby[:GEM_HOME]
     end
-    exec *([ruby[:ruby]] + args)
+    exec *([ruby[:ruby]] + args), close_others: false
     exit 8 # ENOEXEC
   end
 
